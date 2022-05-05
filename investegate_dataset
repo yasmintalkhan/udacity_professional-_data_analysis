@@ -1,0 +1,308 @@
+Project: Investigate a Dataset - [No-show appointments]
+Table of Contents
+Introduction
+Data Wrangling
+Exploratory Data Analysis
+Conclusions
+
+Introduction
+No-show appointments Description
+Tip:This dataset collects information from 100k medical appointments in Brazil and is focused on the question of whether or not patients show up for their appointment. A number of characteristics about the patient are included in each row.
+
+*ScheduledDay’ tells us on what day the patient set up their appointment.
+
+*Neighborhood’ indicates the location of the hospital.
+
+*Scholarship’ indicates whether or not the patient is enrolled in Brasilian welfare program Bolsa Família.
+
+*Be careful about the encoding of the last column: it says ‘No’ if the patient showed up to their appointment, and ‘Yes’ if they did not show up.
+
+Question(s) for Analysis
+What factors are important for us to know in order to predict if a patient will show up for their scheduled appointment?
+
+# Use this cell to set up import statements for all of the packages that you plan to use.
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+% matplotlib inline
+import seaborn as sns
+​
+!pip install --upgrade pandas
+​
+Requirement already up-to-date: pandas in /opt/conda/lib/python3.6/site-packages (1.1.5)
+Requirement already satisfied, skipping upgrade: python-dateutil>=2.7.3 in /opt/conda/lib/python3.6/site-packages (from pandas) (2.8.2)
+Requirement already satisfied, skipping upgrade: pytz>=2017.2 in /opt/conda/lib/python3.6/site-packages (from pandas) (2017.3)
+Requirement already satisfied, skipping upgrade: numpy>=1.15.4 in /opt/conda/lib/python3.6/site-packages (from pandas) (1.19.5)
+Requirement already satisfied, skipping upgrade: six>=1.5 in /opt/conda/lib/python3.6/site-packages (from python-dateutil>=2.7.3->pandas) (1.11.0)
+
+Data Wrangling
+General Properties
+# Load your data and print out a few lines. Perform operations to inspect data
+# types and look for instances of missing or possibly errant data.
+def df_loader(filepath):
+    df=pd.read_csv(filepath)
+    return df
+df =df_loader('./Database_No_show_appointments/data.csv')
+df.head()
+PatientId	AppointmentID	Gender	ScheduledDay	AppointmentDay	Age	Neighbourhood	Scholarship	Hipertension	Diabetes	Alcoholism	Handcap	SMS_received	No-show
+0	2.987250e+13	5642903	F	2016-04-29T18:38:08Z	2016-04-29T00:00:00Z	62	JARDIM DA PENHA	0	1	0	0	0	0	No
+1	5.589978e+14	5642503	M	2016-04-29T16:08:27Z	2016-04-29T00:00:00Z	56	JARDIM DA PENHA	0	0	0	0	0	0	No
+2	4.262962e+12	5642549	F	2016-04-29T16:19:04Z	2016-04-29T00:00:00Z	62	MATA DA PRAIA	0	0	0	0	0	0	No
+3	8.679512e+11	5642828	F	2016-04-29T17:29:31Z	2016-04-29T00:00:00Z	8	PONTAL DE CAMBURI	0	0	0	0	0	0	No
+4	8.841186e+12	5642494	F	2016-04-29T16:07:23Z	2016-04-29T00:00:00Z	56	JARDIM DA PENHA	0	1	1	0	0	0	No
+#exploring the shape of data.
+df.shape
+(110527, 14)
+the data contain numper of patients (rows)110527 and their characterstics(columns)14
+
+#inspect data tyeps and look for if we found any missing values.
+df.info()
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 110527 entries, 0 to 110526
+Data columns (total 14 columns):
+ #   Column          Non-Null Count   Dtype  
+---  ------          --------------   -----  
+ 0   PatientId       110527 non-null  float64
+ 1   AppointmentID   110527 non-null  int64  
+ 2   Gender          110527 non-null  object 
+ 3   ScheduledDay    110527 non-null  object 
+ 4   AppointmentDay  110527 non-null  object 
+ 5   Age             110527 non-null  int64  
+ 6   Neighbourhood   110527 non-null  object 
+ 7   Scholarship     110527 non-null  int64  
+ 8   Hipertension    110527 non-null  int64  
+ 9   Diabetes        110527 non-null  int64  
+ 10  Alcoholism      110527 non-null  int64  
+ 11  Handcap         110527 non-null  int64  
+ 12  SMS_received    110527 non-null  int64  
+ 13  No-show         110527 non-null  object 
+dtypes: float64(1), int64(8), object(5)
+memory usage: 11.8+ MB
+don't have any missing values.
+
+#know more about our data.
+df.describe()
+PatientId	AppointmentID	Age	Scholarship	Hipertension	Diabetes	Alcoholism	Handcap	SMS_received
+count	1.105270e+05	1.105270e+05	110527.000000	110527.000000	110527.000000	110527.000000	110527.000000	110527.000000	110527.000000
+mean	1.474963e+14	5.675305e+06	37.088874	0.098266	0.197246	0.071865	0.030400	0.022248	0.321026
+std	2.560949e+14	7.129575e+04	23.110205	0.297675	0.397921	0.258265	0.171686	0.161543	0.466873
+min	3.921784e+04	5.030230e+06	-1.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000
+25%	4.172614e+12	5.640286e+06	18.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000
+50%	3.173184e+13	5.680573e+06	37.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000
+75%	9.439172e+13	5.725524e+06	55.000000	0.000000	0.000000	0.000000	0.000000	0.000000	1.000000
+max	9.999816e+14	5.790484e+06	115.000000	1.000000	1.000000	1.000000	1.000000	4.000000	1.000000
+*mean of ages = 37 years
+
+*maximum ages = 115 years
+
+*minimum ages = -1 year and this is probably mistake
+
+#identify if we have another rows contain -1 value for the age.
+mask=df.query('Age=="-1"')
+mask
+PatientId	AppointmentID	Gender	ScheduledDay	AppointmentDay	Age	Neighbourhood	Scholarship	Hipertension	Diabetes	Alcoholism	Handcap	SMS_received	No-show
+99832	4.659432e+14	5775010	F	2016-06-06T08:58:13Z	2016-06-06T00:00:00Z	-1	ROMÃO	0	0	0	0	0	0	No
+df.columns
+Index(['PatientId', 'AppointmentID', 'Gender', 'ScheduledDay',
+       'AppointmentDay', 'Age', 'Neighbourhood', 'Scholarship', 'Hipertension',
+       'Diabetes', 'Alcoholism', 'Handcap', 'SMS_received', 'No-show'],
+      dtype='object')
+the characterstics in our data which we will work on.
+
+# if we have duplications in our data.
+df.duplicated().sum()
+0
+Data Cleaning
+# removing -1 value from age.
+df.drop(index=99832,inplace=True)
+df.describe()
+PatientId	AppointmentID	Age	Scholarship	Hipertension	Diabetes	Alcoholism	Handcap	SMS_received
+count	1.105260e+05	1.105260e+05	110526.000000	110526.000000	110526.000000	110526.000000	110526.000000	110526.000000	110526.000000
+mean	1.474934e+14	5.675304e+06	37.089219	0.098266	0.197248	0.071865	0.030400	0.022248	0.321029
+std	2.560943e+14	7.129544e+04	23.110026	0.297676	0.397923	0.258266	0.171686	0.161543	0.466874
+min	3.921784e+04	5.030230e+06	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000
+25%	4.172536e+12	5.640285e+06	18.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000
+50%	3.173184e+13	5.680572e+06	37.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000
+75%	9.438963e+13	5.725523e+06	55.000000	0.000000	0.000000	0.000000	0.000000	0.000000	1.000000
+max	9.999816e+14	5.790484e+06	115.000000	1.000000	1.000000	1.000000	1.000000	4.000000	1.000000
+# After discussing the structure of the data and any problems that need to be
+#   cleaned, perform those cleaning steps in the second part of this section.
+df.drop(['PatientId','AppointmentID','ScheduledDay','AppointmentDay'], axis=1, inplace=True)
+df.head()
+Gender	Age	Neighbourhood	Scholarship	Hipertension	Diabetes	Alcoholism	Handcap	SMS_received	No-show
+0	F	62	JARDIM DA PENHA	0	1	0	0	0	0	No
+1	M	56	JARDIM DA PENHA	0	0	0	0	0	0	No
+2	F	62	MATA DA PRAIA	0	0	0	0	0	0	No
+3	F	8	PONTAL DE CAMBURI	0	0	0	0	0	0	No
+4	F	56	JARDIM DA PENHA	0	1	1	0	0	0	No
+# correct the name of column No-show.
+df.rename(columns={'No-show':'No_show'}, inplace=True)
+df.head()
+Gender	Age	Neighbourhood	Scholarship	Hipertension	Diabetes	Alcoholism	Handcap	SMS_received	No_show
+0	F	62	JARDIM DA PENHA	0	1	0	0	0	0	No
+1	M	56	JARDIM DA PENHA	0	0	0	0	0	0	No
+2	F	62	MATA DA PRAIA	0	0	0	0	0	0	No
+3	F	8	PONTAL DE CAMBURI	0	0	0	0	0	0	No
+4	F	56	JARDIM DA PENHA	0	1	1	0	0	0	No
+# correct the name of column Hipertension.
+df.rename(columns={'Hipertension':'hypertension'}, inplace=True)
+df.head()
+Gender	Age	Neighbourhood	Scholarship	hypertension	Diabetes	Alcoholism	Handcap	SMS_received	No_show
+0	F	62	JARDIM DA PENHA	0	1	0	0	0	0	No
+1	M	56	JARDIM DA PENHA	0	0	0	0	0	0	No
+2	F	62	MATA DA PRAIA	0	0	0	0	0	0	No
+3	F	8	PONTAL DE CAMBURI	0	0	0	0	0	0	No
+4	F	56	JARDIM DA PENHA	0	1	1	0	0	0	No
+
+Exploratory Data Analysis
+Make general look in our data
+# Use this, and more code cells, to explore your data. Don't forget to add
+#   Markdown cells to document your observations and findings.
+df.hist(figsize=(15,10))
+array([[<matplotlib.axes._subplots.AxesSubplot object at 0x7f0dc4976f98>,
+        <matplotlib.axes._subplots.AxesSubplot object at 0x7f0dc48ccf28>,
+        <matplotlib.axes._subplots.AxesSubplot object at 0x7f0dc48f6d68>],
+       [<matplotlib.axes._subplots.AxesSubplot object at 0x7f0dbbae4518>,
+        <matplotlib.axes._subplots.AxesSubplot object at 0x7f0dbbb189e8>,
+        <matplotlib.axes._subplots.AxesSubplot object at 0x7f0dbbb18a20>],
+       [<matplotlib.axes._subplots.AxesSubplot object at 0x7f0dbba8ca58>,
+        <matplotlib.axes._subplots.AxesSubplot object at 0x7f0dbba40048>,
+        <matplotlib.axes._subplots.AxesSubplot object at 0x7f0dbb9f5208>]],
+      dtype=object)
+
+#divided patients into two groups accordint to show or no show, then explore them.
+show=df.No_show=='No'
+noshow=df.No_show=='Yes'
+df[show].count()
+Gender           88207
+Age              88207
+Neighbourhood    88207
+Scholarship      88207
+hypertension     88207
+Diabetes         88207
+Alcoholism       88207
+Handcap          88207
+SMS_received     88207
+No_show          88207
+dtype: int64
+df[noshow].count()
+Gender           22319
+Age              22319
+Neighbourhood    22319
+Scholarship      22319
+hypertension     22319
+Diabetes         22319
+Alcoholism       22319
+Handcap          22319
+SMS_received     22319
+No_show          22319
+dtype: int64
+the number of show patients (88207) is 4 times greater than the no show patients (22319)
+
+Analysing other characterestics
+# dose gender affect the attendes?
+​
+plt.figure(figsize=[15,5])
+df.Gender[show].value_counts().plot(kind='bar',color='orange',label='show')
+df.Gender[noshow].value_counts().plot(kind='bar',color='green',label='noshow')
+plt.legend();
+plt.title('comparisone acc. to Gender')
+plt.xlabel('gender')
+plt.ylabel('patient number');
+
+# compare between who showed to who not showed acc. to gender. 
+df.Gender[show].value_counts()
+F    57245
+M    30962
+Name: Gender, dtype: int64
+df.Gender[noshow].value_counts()
+F    14594
+M     7725
+Name: Gender, dtype: int64
+*Gende is not significant
+
+*females who showed more than males
+
+*females who no showed more than males
+
+# dose age affect the attendes?
+plt.figure(figsize=[30,10])
+df.Age[show].value_counts().plot(kind='bar',color='orange',label='show')
+df.Age[noshow].value_counts().plot(kind='bar',color='green',label='noshow')
+plt.legend();
+plt.title('comparisone acc. to age')
+plt.xlabel('Age')
+plt.ylabel('patient number');
+
+*patient in age from (0 to 10) showed more than other ages.
+
+*the older they get, the less they tend to get the appoientment.
+
+# dose Neighbourhood affect the attendes?
+plt.figure(figsize=[15,10])
+df.Neighbourhood[show].value_counts().head(20).plot(kind='pie',label='show')
+plt.legend();
+plt.title('comparisone acc. to Neighbourhood')
+plt.xlabel('Neighbourhood')
+plt.ylabel('patient number');
+
+plt.figure(figsize=[15,10])
+df.Neighbourhood[noshow].value_counts().head(20).plot(kind='pie',label='noshow')
+plt.legend();
+plt.title('comparisone acc. to Neighbourhood')
+plt.xlabel('Neighbourhood')
+plt.ylabel('patient number');
+
+the neighbourhood is strongly affect the attendes at the appoienment
+
+#does the chronic deseasis and age affect the attendance ? 
+plt.figure(figsize=[10,8])
+df[show].groupby(['hypertension','Diabetes']).mean()['Age'].plot(kind='box',color='orange',label='show')
+plt.legend();
+plt.title('comparisome acc. to chronic deseases')
+plt.xlabel('chronic deseases')
+plt.ylabel('Mean age');
+
+#does the chronic deseasis and age affect the attendance ? 
+plt.figure(figsize=[10,8])
+df[noshow].groupby(['hypertension','Diabetes']).mean()['Age'].plot(kind='box',color='green',label='noshow')
+plt.legend();
+plt.title('comparisome acc. to chronic deseases')
+plt.xlabel('chronic deseases')
+plt.ylabel('Mean age');
+
+df[show].groupby(['hypertension','Diabetes']).mean()['Age']
+hypertension  Diabetes
+0             0           31.510433
+              1           53.666952
+1             0           59.702144
+              1           63.406361
+Name: Age, dtype: float64
+df[noshow].groupby(['hypertension','Diabetes']).mean()['Age']
+hypertension  Diabetes
+0             0           28.834155
+              1           49.183391
+1             0           58.377043
+              1           62.820333
+Name: Age, dtype: float64
+*there is a correlation between ages and choronic diseases
+
+*there is no correlation between choronic diseases and attending
+
+
+Conclusions
+we can say that neighbourhood is strongly related to the patients showing up at the clinic.
+the age also has its effect as patients in age from (0 to 10) showed more than other ages.
+Limitations
+couldn't show correlation between patients showing and no showing with many characterestics such as (gender , chronic diseases).
+Submitting your Project
+Tip: Before you submit your project, you need to create a .html or .pdf version of this notebook in the workspace here. To do that, run the code cell below. If it worked correctly, you should get a return code of 0, and you should see the generated .html file in the workspace directory (click on the orange Jupyter icon in the upper left).
+
+Tip: Alternatively, you can download this report as .html via the File > Download as submenu, and then manually upload it into the workspace directory by clicking on the orange Jupyter icon in the upper left, then using the Upload button.
+
+Tip: Once you've done this, you can submit your project by clicking on the "Submit Project" button in the lower right here. This will create and submit a zip file with this .ipynb doc and the .html or .pdf version you created. Congratulations!
+
+from subprocess import call
+call(['python', '-m', 'nbconvert', 'Investigate_a_Dataset.ipynb'])
+0
+​
